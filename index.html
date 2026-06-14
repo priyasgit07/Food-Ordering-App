@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zomato - Demo</title>
+<style>
+/* ====== GLOBAL ====== */
+* { box-sizing: border-box; }
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: #f9f9f9;
+  transition: background .35s, color .35s;
+  color: #111;
+}
+body.dark-mode { background: #121212; color: #eee; }
+
+/* ====== HEADER ====== */
+header {
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  position:relative; padding: 8px 0;
+}
+.logo { width:50px; height:50px; border-radius:50%; object-fit:cover; display:none; }
+#toggle-mode { position:absolute; right:0; top:8px; padding:6px 10px; cursor:pointer; background:transparent; border:none; font-size:18px;}
+#user-name { position:absolute; left:0; top:12px; font-weight:600; color:inherit; }
+
+/* ====== FILTER BAR ====== */
+#filter-bar { display:flex; gap:10px; margin:15px 0; flex-wrap:wrap; align-items:center; }
+#filter-bar input, #filter-bar select, #filter-bar button {
+  padding:8px 10px; border-radius:6px; border:1px solid #ccc; outline:none;
+}
+
+/* ====== CATEGORY BUTTONS ====== */
+#category-buttons { display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; }
+#category-buttons button { padding:6px 12px; border-radius:6px; border:none; background:#06d6a0; color:#fff; cursor:pointer; }
+
+/* ====== MENU GRID ====== */
+#menu-list {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:20px;
+  margin-top:20px;
+}
+.menu-card {
+  background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  overflow:hidden; text-align:center; transition:transform .25s ease, box-shadow .25s;
+  position:relative;
+}
+body.dark-mode .menu-card { background:#222; color:#fff; box-shadow:0 6px 18px rgba(0,0,0,0.35); }
+.menu-card:hover { transform:translateY(-6px); box-shadow:0 12px 30px rgba(0,0,0,0.12); }
+.menu-image { width:100%; height:150px; object-fit:cover; display:block; }
+.menu-details { padding:12px; }
+.menu-name { font-weight:700; margin-bottom:6px; }
+.menu-category { color:#666; font-size:13px; margin-bottom:6px; text-transform:capitalize; }
+.menu-price { color:#e63946; font-weight:700; margin-bottom:8px; }
+.menu-details button { background:#06d6a0; color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+
+/* ====== CART ICON & PANEL ====== */
+#cart-icon {
+  position:fixed; bottom:20px; right:20px; z-index:3000; cursor:pointer; font-size:22px;
+  background:transparent; border:none;
+}
+#cart-count {
+  position:absolute; top:6px; right:6px; background:#e61919; color:#fff; font-weight:700;
+  padding:3px 7px; border-radius:50%; font-size:12px; border:2px solid #333;
+}
+#cart {
+  position:fixed; top:0; right:-380px; width:360px; height:100%; background:#fff; color:#111;
+  box-shadow:-4px 0 18px rgba(0,0,0,0.18); padding:18px; transition:right .28s ease; z-index:2500; overflow:auto;
+}
+#cart.open { right:0; }
+body.dark-mode #cart { background:#1f1f1f; color:#fff; }
+
+/* cart inner */
+#cart h3 { margin-top:0; margin-bottom:8px; }
+.cart-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; align-items:center; }
+body.dark-mode .cart-item { border-color:#333; }
+.qty-btn { background:#eee; border:none; padding:4px 8px; border-radius:6px; cursor:pointer; }
+.qty { padding:0 8px; }
+
+/* coupon */
+#coupon-section { margin-top:12px; padding:10px; border-radius:8px; border:1px dashed #06d6a0; background:#f0fffa; color:#111; }
+body.dark-mode #coupon-section { background:#222; color:#fff; border-color:#2a7a63; }
+.coupon-input { display:flex; gap:8px; margin-top:8px; }
+
+/* place order */
+#place-order { margin-top:12px; width:100%; padding:10px; border-radius:8px; border:none; background:#e63946; color:#fff; cursor:pointer; }
+
+/* ====== RECOMMENDED ====== */
+.recommended-container { margin-top:30px; position:relative; display:flex; align-items:center; }
+.left-btn, .right-btn { position:absolute; z-index:10; background:rgba(0,0,0,0.4); color:#fff; border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.left-btn { left:-12px; } .right-btn { right:-12px; }
+#recommended-list { display:flex; gap:16px; overflow-x:auto; padding-bottom:10px; scroll-behavior:smooth; -webkit-overflow-scrolling: touch; }
+.recommend-card { min-width:220px; max-width:220px; height:270px; border-radius:12px; background:#fff; box-shadow:0 6px 15px rgba(0,0,0,0.12); display:flex; flex-direction:column; overflow:hidden; position:relative; }
+body.dark-mode .recommend-card { background:#222; color:#fff; }
+
+/* ====== AUTH LINKS (login area) ====== */
+.auth-links { margin-top:12px; display:flex; flex-direction:column; gap:8px; align-items:center; font-size:14px; }
+.auth-links a { color:#06d6a0; text-decoration:underline; cursor:pointer; padding:4px 6px; }
+.auth-links a:hover { opacity:0.9; transform:translateY(-1px); }
+
+/* small screens */
+@media (max-width:768px) {
+  #filter-bar { flex-direction:column; align-items:stretch; }
+  #cart { width:100%; right:-100%; }
+  #menu-list { grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); }
+  .recommend-card { min-width:180px; height:230px; }
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH OVERLAY (login + signup) -->
+<div id="auth-container" aria-hidden="false" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:4000; background:rgba(0,0,0,0.45);">
+  <div class="auth-card" id="login-card" style="background:#ffffff; padding:26px; border-radius:12px; width:360px; max-width:90%;">
+    <h2 style="margin-top:0; text-align:center;">Login</h2>
+    <input id="login-email" type="email" placeholder="Email" style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc;" aria-label="Email">
+    <input id="login-password" type="password" placeholder="Password" style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc;" aria-label="Password">
+    <button id="login-btn" style="width:100%; padding:10px; background:#06d6a0; color:#fff; border:none; border-radius:6px; cursor:pointer;">Login</button>
+
+    <!-- Links visible clearly -->
+    <div class="auth-links">
+      <a href="#" id="to-signup-link">Don't have an account? Signup</a>
+      <a href="#" id="forgot-link">Forgot Password?</a>
+    </div>
+  </div>
+
+  <div class="auth-card" id="signup-card" style="display:none; background:#ffffff; padding:26px; border-radius:12px; width:360px; max-width:90%;">
+    <h2 style="margin-top:0; text-align:center;">Signup</h2>
+    <input id="signup-name" type="text" placeholder="Full name" style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc;" aria-label="Full name">
+    <input id="signup-email" type="email" placeholder="Email" style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc;" aria-label="Email">
+    <input id="signup-password" type="password" placeholder="Password" style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc;" aria-label="Password">
+    <button id="signup-btn" style="width:100%; padding:10px; background:#06d6a0; color:#fff; border:none; border-radius:6px; cursor:pointer;">Signup</button>
+    <div style="margin-top:10px; text-align:center;"><a href="#" id="to-login-link" style="color:#06d6a0; text-decoration:underline;">Already have account? Login</a></div>
+  </div>
+</div>
+
+<!-- FORGOT MODAL -->
+<div id="forgot-modal" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:4500;">
+  <div style="background:#fff; padding:18px; border-radius:10px; width:320px; max-width:90%; position:relative;">
+    <button id="close-forgot" style="position:absolute; right:8px; top:6px; border:none; background:transparent; font-size:18px; cursor:pointer;">&times;</button>
+    <h3 style="margin-top:0;">Reset Password</h3>
+    <input id="forgot-email" type="email" placeholder="Enter your email" style="width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #ccc;">
+    <button id="send-reset" style="width:100%; padding:10px; background:#06d6a0; color:#fff; border:none; border-radius:6px; cursor:pointer;">Send Reset Link</button>
+    <p id="forgot-message" style="margin-top:10px;color:green;"></p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <img src="https://picsum.photos/seed/logo/80/80" alt="logo" class="logo">
+  <h1 style="margin:0;">Zomato</h1>
+  <button id="toggle-mode" aria-label="Toggle dark mode">🌙</button>
+  <span id="user-name" aria-live="polite"></span>
+</header>
+
+<!-- FILTER -->
+<div id="filter-bar">
+  <input id="search-name" type="text" placeholder="Search by name" />
+  <input id="search-price" type="number" placeholder="Max Price" min="0" />
+  <select id="search-category" aria-label="Category">
+    <option value="">All Categories</option>
+    <option value="veg">Veg</option>
+    <option value="non-veg">Non-veg</option>
+    <option value="dessert">Dessert</option>
+  </select>
+  <button id="search-btn">Search</button>
+</div>
+
+<div id="category-buttons">
+  <button onclick="filterCategory('')">All</button>
+  <button onclick="filterCategory('veg')">Veg</button>
+  <button onclick="filterCategory('non-veg')">Non-veg</button>
+  <button onclick="filterCategory('dessert')">Dessert</button>
+</div>
+
+<!-- MENU -->
+<div id="menu-list" aria-live="polite"></div>
+
+<!-- CART -->
+<button id="cart-icon" aria-label="Open cart">🛒 <span id="cart-count">0</span></button>
+<aside id="cart" aria-hidden="true" role="region" aria-label="Cart panel">
+  <h3>Your Cart</h3>
+  <div id="cart-list"></div>
+  <p id="total-price">Total: ₹0</p>
+
+  <div id="coupon-section">
+    <h4 style="margin:0 0 6px 0;">Apply Discount Coupon</h4>
+    <div class="coupon-input">
+      <input id="coupon-code" type="text" placeholder="Enter coupon">
+      <button id="apply-coupon">Apply</button>
+    </div>
+    <p id="coupon-message" style="margin:6px 0 0;"></p>
+  </div>
+
+  <button id="place-order">Place Order</button>
+  <div id="order-status" style="margin-top:8px;font-weight:600;"></div>
+</aside>
+
+<!-- RECOMMENDED -->
+<section id="recommended" aria-label="Recommended">
+  <h3>Recommended for You</h3>
+  <div class="recommended-container">
+    <button class="left-btn" aria-label="Scroll left">◀</button>
+    <div id="recommended-list"></div>
+    <button class="right-btn" aria-label="Scroll right">▶</button>
+  </div>
+</section>
+
+<script>
+/* ===================== DATA (cleaned & unique ids, lowercase categories) ===================== */
+let menuItems = [
+  { id: 1, name: "Paneer Butter Masala", category: "veg", price: 200, image: "https://tse3.mm.bing.net/th/id/OIP.aeuDTUu-a_u1-rXFzQYKdgHaE7" },
+  { id: 2, name: "Chicken Biryani", category: "non-veg", price: 250, image: "https://img.freepik.com/premium-photo/chicken-biryani-background-images-chicken-biryani-wallpapers-basmati-rice-chicken-biryani_1037362-12163.jpg" },
+  { id: 3, name: "Gulab Jamun", category: "dessert", price: 50, image: "https://as2.ftcdn.net/v2/jpg/08/94/76/25/1000_F_894762571_KXz2mTpbcjHRGMg48iiU4CnI9v7La4EN.jpg" },
+  { id: 4, name: "Veg Pulao", category: "veg", price: 150, image: "https://www.whiskaffair.com/wp-content/uploads/2020/07/Hibachi-Fried-Rice-3-768x768.jpg" },
+  { id: 5, name: "Chicken 65", category: "non-veg", price: 180, image: "https://i0.wp.com/www.relishthebite.com/wp-content/uploads/2014/08/Chicken65-4.jpg" },
+  { id: 6, name: "Chocolate Brownie", category: "dessert", price: 70, image: "https://img.freepik.com/premium-photo/decadent-chocolate-brownie-delight_941761-15205.jpg" },
+  { id: 7, name: "Masala Dosa", category: "veg", price: 120, image: "https://img.freepik.com/premium-photo/golden-brown-dosa-photo_1036998-301225.jpg" },
+  { id: 8, name: "Mutton Curry", category: "non-veg", price: 300, image: "https://img.freepik.com/premium-photo/lamb-rogan-josh-indian-food_198067-360917.jpg" },
+  { id: 9, name: "Ice Cream Sundae", category: "dessert", price: 90, image: "https://img.freepik.com/premium-photo/glass-chocolate-sundae-with-cherry-top_759095-6748.jpg" },
+  { id: 10, name: "Butter Naan", category: "veg", price: 40, image: "https://img.freepik.com/premium-photo/closeup-baked-naan-bread-with-butter-cilantro-wooden-desk-indian-bakery-cookery-with_1014870-20854.jpg" },
+  { id: 11, name: "Mutton Korma", category: "non-veg", price: 300, image: "https://img.freepik.com/premium-photo/lamb-rogan-josh-indian-food-photography_1037600-134.jpg" },
+  { id: 12, name: "Rasgulla", category: "dessert", price: 60, image: "https://img.freepik.com/premium-photo/tempting-rasgulla-symphony-indian-traditional-sweet-dessert-rasgulla-picture-photography_1020697-145210.jpg" },
+  { id: 13, name: "Grilled Fish", category: "non-veg", price: 220, image: "https://tse1.mm.bing.net/th/id/OIP.1A1Nb6ZN1wjpxbjIRHVIxwHaEP" },
+  { id: 14, name: "Rasmalai", category: "dessert", price: 150, image: "https://i.ytimg.com/vi/qtQf1gMVM0E/maxresdefault.jpg" },
+  { id: 15, name: "Paneer Tikka", category: "veg", price: 220, image: "https://img.freepik.com/premium-photo/paneer-tikka-tempting-flavors_1179130-55028.jpg" },
+  { id: 16, name: "Veg Biryani", category: "veg", price: 220, image: "https://img.freepik.com/premium-photo/fragrant-veg-biryani-with-tempting-colors_1179130-187779.jpg" },
+  { id: 17, name: "Fish Curry", category: "non-veg", price: 220, image: "https://img.freepik.com/premium-photo/tempting-fish-curry-ready-serve_1179130-97520.jpg" },
+  { id: 18, name: "Choco Lava Cake", category: "dessert", price: 60, image: "https://thumbs.dreamstime.com/b/indulge-decadence-tempting-close-up-rich-molten-lava-cake-masterpiece-generative-ai-indulge-decadence-297336629.jpg" },
+  { id: 19, name: "Jalebi", category: "dessert", price: 50, image: "https://img.freepik.com/premium-photo/exotic-saffron-jalebi-traditional-indian-sweet-jalebi-image-photography_1020697-132377.jpg" },
+  { id: 20, name: "Kulfi", category: "dessert", price: 35, image: "https://www.varanasimirror.com/wp-content/uploads/2021/04/kulfi.jpg" },
+  { id: 21, name: "Fried Prawn", category: "non-veg", price: 180, image: "https://img.freepik.com/premium-photo/tempting-fried-prawns-platter-delicious-seafood-dish-black-background_1106454-38817.jpg" },
+  { id: 22, name: "Cheese Cake", category: "dessert", price: 60, image: "https://img.freepik.com/premium-photo/classic-cheesecake-slice-tempting-sweet-treat_1106454-21178.jpg" },
+  { id: 23, name: "Payasam", category: "dessert", price: 80, image: "https://aartimadan.com/wp-content/uploads/2019/07/rice-kheer-recipe-images-6.jpg" },
+  { id: 24, name: "Kheer", category: "dessert", price: 75, image: "https://img.freepik.com/premium-photo/rice-kheer-indian-dessert_1020697-200.jpg" },
+  { id: 25, name: "Brownie Ice Cream", category: "dessert", price: 90, image: "https://img.freepik.com/premium-photo/tempting-chocolate-brownie_729149-4852.jpg" },
+  { id: 26, name: "Carrot Halwa", category: "dessert", price: 120, image: "https://grain2grind.com/wp-content/uploads/2023/05/7-100.jpg" },
+  { id: 27, name: "Mushroom Biryani", category: "veg", price: 150, image: "https://static.vecteezy.com/system/resources/previews/030/496/513/large_2x/tempting-biryani-with-basmati-rice-that-was-absolutely-delicious-by-generative-ai-free-photo.jpg" },
+  { id: 28, name: "Gobi Rice", category: "veg", price: 60, image: "https://img.freepik.com/premium-photo/pan-rice-with-rice-meat-rice_1209326-115709.jpg" },
+  { id: 29, name: "Coconut Milk Veg Biryani", category: "veg", price: 120, image: "https://rakskitchen.net/wp-content/uploads/2016/08/28292062553_a9a32beb5d_z-500x500.jpg" },
+  { id: 30, name: "Hyderabad Biryani", category: "non-veg", price: 120, image: "https://img.freepik.com/premium-photo/tempting-tandoor-biryani_1179130-14681.jpg" },
+  { id: 31, name: "Fried Rice", category: "non-veg", price: 120, image: "https://rskfood.com/wp-content/uploads/2023/08/chiken-fried-rice-1-1.png" },
+  { id: 32, name: "Fried Noodles", category: "non-veg", price: 120, image: "https://i.pinimg.com/originals/28/67/06/2867064fcdae349df0c7f907d6b39628.jpg" },
+  { id: 33, name: "Egg Biryani", category: "non-veg", price: 120, image: "https://img.freepik.com/premium-photo/bowl-egg-biryani-with-halves-boiled-eggs-plac_1207919-14023.jpg" },
+  { id: 34, name: "Grill Chicken", category: "non-veg", price: 120, image: "https://img.freepik.com/premium-photo/roast-chicken-bbq_1029622-160697.jpg" },
+  { id: 35, name: "Ice Cream", category: "dessert", price: 90, image: "https://img.freepik.com/premium-photo/three-scoops-ice-cream-with-syrup-illustration-generative-ai_850000-3931.jpg" },
+  { id: 36, name: "Idli", category: "veg", price: 40, image: "https://www.corriecooks.com/wp-content/uploads/2023/04/Idli.jpg" }
+];
+
+/* ===================== APP STATE ===================== */
+let cart = JSON.parse(localStorage.getItem("cart") || "[]"); // persist cart
+let users = JSON.parse(localStorage.getItem("users") || "[]"); // persist users
+let appliedDiscount = 0;
+let filteredItems = [...menuItems];
+
+/* ===================== HELPERS ===================== */
+function saveCart(){ localStorage.setItem("cart", JSON.stringify(cart)); }
+function saveUsers(){ localStorage.setItem("users", JSON.stringify(users)); }
+
+/* ===================== UI REFS ===================== */
+const cartIcon = document.getElementById("cart-icon");
+const cartPanel = document.getElementById("cart");
+const cartCountEl = document.getElementById("cart-count");
+const userNameDisplay = document.getElementById("user-name");
+
+/* ===================== AUTH LOGIC ===================== */
+const authContainer = document.getElementById("auth-container");
+const loginCard = document.getElementById("login-card");
+const signupCard = document.getElementById("signup-card");
+const toSignupLink = document.getElementById("to-signup-link");
+const toLoginLink = document.getElementById("to-login-link");
+const forgotLink = document.getElementById("forgot-link");
+const forgotModal = document.getElementById("forgot-modal");
+const closeForgot = document.getElementById("close-forgot");
+
+toSignupLink.addEventListener("click", (e)=>{ e.preventDefault(); loginCard.style.display="none"; signupCard.style.display="block"; });
+toLoginLink.addEventListener("click", (e)=>{ e.preventDefault(); signupCard.style.display="none"; loginCard.style.display="block"; });
+forgotLink.addEventListener("click", (e)=>{ e.preventDefault(); forgotModal.style.display="flex"; });
+closeForgot.addEventListener("click", ()=>{ forgotModal.style.display="none"; });
+
+/* Signup */
+document.getElementById("signup-btn").addEventListener("click", ()=>{
+  const name = document.getElementById("signup-name").value.trim();
+  const email = document.getElementById("signup-email").value.trim();
+  const password = document.getElementById("signup-password").value;
+  if(!name || !email || !password) return alert("Please fill all fields");
+  if(users.find(u=>u.email===email)) return alert("Email already exists");
+  users.push({name,email,password});
+  saveUsers();
+  alert("Signup successful! Please login");
+  signupCard.style.display="none"; loginCard.style.display="block";
+});
+
+/* Login (save currentUser) */
+document.getElementById("login-btn").addEventListener("click", ()=>{
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const user = users.find(u=>u.email===email && u.password===password);
+  if(!user) return alert("Invalid credentials");
+  authContainer.style.display="none";
+  localStorage.setItem('currentUser', JSON.stringify(user));
+  showCurrentUser();
+});
+
+/* forgot */
+document.getElementById("send-reset").addEventListener("click", ()=>{
+  const mail = document.getElementById("forgot-email").value.trim();
+  if(!mail) return alert("Enter email");
+  document.getElementById("forgot-message").textContent = "If this email exists, a reset link was sent (demo).";
+});
+
+/* ===================== CART UI ===================== */
+cartIcon.addEventListener("click", ()=>{
+  cartPanel.classList.toggle("open");
+  cartPanel.setAttribute('aria-hidden', cartPanel.classList.contains('open') ? 'false' : 'true');
+});
+
+function updateCartCount(){ cartCountEl.textContent = cart.reduce((s,i)=> s + (i.qty || 1), 0); }
+
+/* Add to cart: merge qty if already present */
+function addToCart(id, btn){
+  const item = menuItems.find(i=>i.id===id);
+  if(!item) return;
+  const existing = cart.find(c=>c.id === id);
+  if(existing) existing.qty = (existing.qty || 1) + 1;
+  else cart.push({...item, qty:1});
+  saveCart();
+  renderCart();
+  if(btn){
+    const img = btn.closest('.menu-card')?.querySelector('img');
+    if(img) flyToCart(img);
+  }
+}
+
+/* Render menu with lazy loading images */
+function renderMenu(items){
+  const menuList = document.getElementById("menu-list");
+  menuList.innerHTML = "";
+  items.forEach(item=>{
+    const div = document.createElement("div");
+    div.className = "menu-card";
+    div.innerHTML = `
+      <img src="${item.image}" alt="${item.name}" class="menu-image" loading="lazy" onerror="this.style.opacity=0.6;">
+      <div class="menu-details">
+        <div class="menu-name">${item.name}</div>
+        <div class="menu-category">${item.category}</div>
+        <div class="menu-price">₹${item.price}</div>
+        <button class="add-btn">Add</button>
+      </div>
+    `;
+    menuList.appendChild(div);
+    div.querySelector(".add-btn").addEventListener("click", (e)=> addToCart(item.id, e.target));
+  });
+}
+
+/* Render cart with qty controls */
+function renderCart(){
+  const cartList = document.getElementById("cart-list");
+  cartList.innerHTML = "";
+  if(cart.length === 0){
+    cartList.innerHTML = "<p>Cart is empty</p>";
+  } else {
+    cart.forEach((item,index)=>{
+      const row = document.createElement("div");
+      row.className = "cart-item";
+      row.innerHTML = `
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="min-width:140px;"><strong>${item.name}</strong><div style="font-size:12px;color:#666;">₹${item.price}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="qty-btn dec" data-i="${index}">−</button>
+            <span class="qty">${item.qty || 1}</span>
+            <button class="qty-btn inc" data-i="${index}">+</button>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div>₹${(item.price * (item.qty || 1)).toFixed(2)}</div>
+          <button class="remove-btn" data-i="${index}" style="background:#eee;border:none;padding:6px;border-radius:6px;cursor:pointer;margin-top:6px;">Remove</button>
+        </div>
+      `;
+      cartList.appendChild(row);
+
+      row.querySelector('.inc').addEventListener('click', ()=>{
+        cart[index].qty = (cart[index].qty || 1) + 1; saveCart(); renderCart();
+      });
+      row.querySelector('.dec').addEventListener('click', ()=>{
+        cart[index].qty = Math.max(1, (cart[index].qty || 1) - 1); saveCart(); renderCart();
+      });
+      row.querySelector('.remove-btn').addEventListener('click', ()=>{
+        cart.splice(index,1); saveCart(); renderCart();
+      });
+    });
+  }
+  const total = cart.reduce((s,i)=> s + i.price * (i.qty || 1), 0);
+  document.getElementById("total-price").textContent = `Total: ₹${(total * (1 - appliedDiscount/100)).toFixed(2)}`;
+  updateCartCount();
+}
+
+/* ===================== FLY TO CART ANIMATION ===================== */
+function flyToCart(imgElement){
+  const cartIconEl = document.getElementById("cart-icon");
+  const rect = imgElement.getBoundingClientRect();
+  const cartRect = cartIconEl.getBoundingClientRect();
+  const flying = imgElement.cloneNode(true);
+  flying.style.position = "fixed";
+  flying.style.left = rect.left + "px";
+  flying.style.top = rect.top + "px";
+  flying.style.width = rect.width + "px";
+  flying.style.height = rect.height + "px";
+  flying.style.transition = "all 0.8s ease-in-out";
+  flying.style.zIndex = 5000;
+  document.body.appendChild(flying);
+  requestAnimationFrame(()=> {
+    flying.style.left = cartRect.left + "px";
+    flying.style.top = cartRect.top + "px";
+    flying.style.width = "0px";
+    flying.style.height = "0px";
+    flying.style.opacity = "0";
+  });
+  flying.addEventListener("transitionend", ()=> flying.remove());
+}
+
+/* ===================== COUPONS ===================== */
+const coupons = { "ZOMATO10":10, "FOOD20":20, "YUMMY30":30 };
+document.getElementById("apply-coupon").addEventListener("click", ()=>{
+  const code = document.getElementById("coupon-code").value.trim().toUpperCase();
+  const message = document.getElementById("coupon-message");
+  if(code && coupons[code]){
+    appliedDiscount = coupons[code];
+    message.textContent = `Coupon applied! ${appliedDiscount}% off 🥳`;
+  } else {
+    appliedDiscount = 0;
+    message.textContent = "Invalid coupon";
+  }
+  renderCart();
+});
+
+/* ===================== PLACE ORDER ===================== */
+document.getElementById("place-order").addEventListener("click", ()=>{
+  const status = document.getElementById("order-status");
+  if(cart.length===0) return alert("Cart is empty!");
+  status.textContent = "Preparing 🍳";
+  setTimeout(()=> status.textContent = "Out for Delivery 🚴‍♂️", 2000);
+  setTimeout(()=> {
+    status.textContent = "Delivered ✅";
+    cart = []; appliedDiscount = 0;
+    document.getElementById("coupon-code").value = "";
+    document.getElementById("coupon-message").textContent = "";
+    saveCart(); renderCart();
+  }, 5000);
+});
+
+/* ===================== RECOMMENDED SECTION ===================== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  renderMenu(menuItems);
+  renderCart();
+  showCurrentUser();
+
+  const recommendedContainer = document.getElementById("recommended-list");
+  function renderRecommendations(){
+    recommendedContainer.innerHTML = "";
+    const shuffled = [...menuItems].sort(()=>0.5 - Math.random()).slice(0, Math.min(12, menuItems.length));
+    shuffled.forEach(item=>{
+      const card = document.createElement("div");
+      card.className = "recommend-card";
+      card.innerHTML = `
+        <img src="${item.image}" alt="${item.name}" loading="lazy" style="width:100%;height:150px;object-fit:cover;">
+        <div style="padding:8px;text-align:center;">
+          <p style="margin:6px 0 2px 0;font-weight:700;">${item.name}</p>
+          <div style="color:#666;margin-bottom:8px;">₹${item.price} • ${item.category}</div>
+          <button style="background:#06d6a0;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;" class="rec-add">Add</button>
+        </div>
+      `;
+      recommendedContainer.appendChild(card);
+      card.querySelector(".rec-add").addEventListener("click", ()=> addToCart(item.id, card.querySelector('img')));
+    });
+  }
+  renderRecommendations();
+
+  document.querySelector(".left-btn").addEventListener("click", ()=> recommendedContainer.scrollBy({left:-220, behavior:'smooth'}));
+  document.querySelector(".right-btn").addEventListener("click", ()=> recommendedContainer.scrollBy({left:220, behavior:'smooth'}));
+
+  // gentle auto-scroll
+  let scrollAmount = 0;
+  setInterval(()=>{
+    if(recommendedContainer.scrollWidth <= recommendedContainer.clientWidth) return;
+    scrollAmount += 1;
+    if(scrollAmount >= recommendedContainer.scrollWidth - recommendedContainer.clientWidth) scrollAmount = 0;
+    recommendedContainer.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+  }, 50);
+});
+
+/* ===================== DARK MODE TOGGLE ===================== */
+document.getElementById("toggle-mode").addEventListener("click", ()=>{
+  document.body.classList.toggle("dark-mode");
+});
+
+/* ===================== SEARCH & FILTER (with debounce) ===================== */
+function debounce(fn, delay=300){
+  let t;
+  return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), delay); };
+}
+
+function performSearch(){
+  const name = (document.getElementById("search-name").value || "").toLowerCase();
+  const priceVal = document.getElementById("search-price").value;
+  const price = priceVal === "" ? null : Number(priceVal);
+  const category = document.getElementById("search-category").value;
+  filteredItems = menuItems.filter(i=>{
+    const matchName = !name || i.name.toLowerCase().includes(name);
+    const matchPrice = (price === null) || i.price <= price;
+    const matchCat = !category || i.category === category;
+    return matchName && matchPrice && matchCat;
+  });
+  renderMenu(filteredItems);
+}
+
+document.getElementById('search-name').addEventListener('input', debounce(performSearch, 350));
+document.getElementById('search-price').addEventListener('input', debounce(performSearch, 350));
+document.getElementById('search-category').addEventListener('change', performSearch);
+document.getElementById('search-btn').addEventListener('click', performSearch);
+
+function filterCategory(cat){
+  filteredItems = cat ? menuItems.filter(i => i.category === cat) : [...menuItems];
+  renderMenu(filteredItems);
+}
+
+/* ===================== USER SESSION (persist & logout) ===================== */
+function showCurrentUser(){
+  const cu = JSON.parse(localStorage.getItem('currentUser') || "null");
+  if(cu){
+    userNameDisplay.innerHTML = `Hello, ${cu.name} · <a href="#" id="logout-link" style="color:#e63946;text-decoration:underline; margin-left:8px;">Logout</a>`;
+    const logout = document.getElementById('logout-link');
+    logout.addEventListener('click', (e)=>{ e.preventDefault(); localStorage.removeItem('currentUser'); userNameDisplay.textContent = ''; authContainer.style.display = 'flex'; });
+  } else {
+    userNameDisplay.textContent = '';
+  }
+}
+</script>
+</body>
+</html>
